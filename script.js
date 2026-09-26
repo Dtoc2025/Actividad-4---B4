@@ -1,37 +1,70 @@
+const API_URL = 'https://jsonplaceholder.typicode.com/users';
+
 const userList = document.getElementById('userList');
 const searchInput = document.getElementById('searchInput');
-let allUsers = [];
 
-// Obtener datos desde la API pública
-async function fetchUsers() {
+let allUsers = [];
+let cargando = false;
+
+async function obtenerUsuarios() {
+    if (cargando) return;
+    cargando = true;
+
+    mostrarMensaje('Cargando usuarios...');
+
     try {
-        const response = await fetch('https://jsonplaceholder.typicode.com/users');
-        allUsers = await response.json();
-        displayUsers(allUsers);
+        const respuesta = await fetch(API_URL);
+
+        if (!respuesta.ok) {
+            throw new Error(`Error HTTP: ${respuesta.status}`);
+        }
+
+        allUsers = await respuesta.json();
+        renderizarUsuarios(allUsers);
+
     } catch (error) {
         console.error('Error al obtener datos:', error);
+        mostrarMensaje('No se pudieron cargar los usuarios. Intenta de nuevo.');
+    } finally {
+        cargando = false;
     }
 }
 
-// Mostrar los datos dinámicamente
-function displayUsers(users) {
+function renderizarUsuarios(usuarios) {
     userList.innerHTML = '';
-    users.forEach(user => {
+
+    if (usuarios.length === 0) {
+        mostrarMensaje('No se encontraron resultados.');
+        return;
+    }
+
+    const fragmento = document.createDocumentFragment();
+
+    usuarios.forEach(usuario => {
         const li = document.createElement('li');
-        li.textContent = `${user.name} - ${user.email}`;
-        userList.appendChild(li);
+        li.innerHTML = `
+            <strong>${usuario.name}</strong>
+            <span>${usuario.email}</span>
+        `;
+        fragmento.appendChild(li);
     });
+
+    userList.appendChild(fragmento);
 }
 
-// Interacción básica (Filtro de búsqueda)
-searchInput.addEventListener('input', (e) => {
-    const searchTerm = e.target.value.toLowerCase();
-    const filteredUsers = allUsers.filter(user => 
-        user.name.toLowerCase().includes(searchTerm)
+function mostrarMensaje(texto) {
+    userList.innerHTML = `<li class="mensaje">${texto}</li>`;
+}
+
+function filtrarUsuarios() {
+    const termino = searchInput.value.trim().toLowerCase();
+    const filtrados = allUsers.filter(usuario =>
+        usuario.name.toLowerCase().includes(termino) ||
+        usuario.email.toLowerCase().includes(termino)
     );
-    displayUsers(filteredUsers);
-});
+    renderizarUsuarios(filtrados);
+}
 
-// Inicializar
-fetchUsers();
+searchInput.addEventListener('input', filtrarUsuarios);
 
+obtenerUsuarios();
